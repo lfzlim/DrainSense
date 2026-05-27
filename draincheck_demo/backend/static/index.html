@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrainCheck Live Monitor</title>
+    <!-- TODO(security): Update SRI hashes for production -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin=""/>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- CSP: allow scripts from unpkg and jsdelivr for leaflet and chart.js -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self';">
+</head>
+<body>
+    <div class="header">
+        <h1>DrainCheck — Live Catchment Monitor</h1>
+        <button id="reset-btn">Reset Baseline</button>
+    </div>
+
+    <div id="alert-banner" class="alert-banner hidden"></div>
+
+    <div class="main-content">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <div class="charts-container">
+            <!-- S1 -->
+            <div class="chart-card" id="card-s1">
+                <div class="chart-header">
+                    <h2>Sensor 1</h2>
+                    <span class="water-level" id="level-s1">-- mm</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="chart-s1"></canvas>
+                </div>
+                <div class="ir-strip" id="ir-s1">Beam Intact</div>
+            </div>
+
+            <!-- S2 -->
+            <div class="chart-card" id="card-s2">
+                <div class="chart-header">
+                    <h2>Sensor 2</h2>
+                    <span class="water-level" id="level-s2">-- mm</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="chart-s2"></canvas>
+                </div>
+                <div class="ir-strip" id="ir-s2">Beam Intact</div>
+            </div>
+
+            <!-- S3 -->
+            <div class="chart-card" id="card-s3">
+                <div class="chart-header">
+                    <h2>Sensor 3</h2>
+                    <span class="water-level" id="level-s3">-- mm</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="chart-s3"></canvas>
+                </div>
+                <div class="ir-strip" id="ir-s3">Beam Intact</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-container">
+        <h3>Event History</h3>
+        <table id="history-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>First Sensor</th>
+                    <th>Source Location</th>
+                    <th>Signature</th>
+                    <th>Confidence</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin=""></script>
+    <script src="app.js"></script>
+</body>
+</html>
