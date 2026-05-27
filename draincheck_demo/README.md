@@ -7,8 +7,11 @@ This repository contains the code and instructions for the DrainCheck low-fideli
 1. **Backend API**:
    - Requires Python 3.11+.
    - Navigate to `backend/`.
-   - Install dependencies: `pip install -r requirements.txt`.
-   - Run the API server: `uvicorn main:app --host 127.0.0.1 --port 8000`.
+   - sudo apt update && sudo apt install python3-venv -y
+   - python3 -m venv venv
+   - source venv/bin/activate
+   - pip install -r requirements.txt
+   - uvicorn main:app --host 127.0.0.1 --port 8000
 
 2. **Frontend Dashboard**:
    - Requires Node.js.
