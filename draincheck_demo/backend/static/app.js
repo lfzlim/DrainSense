@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (data.type === 'event_start') {
             const banner = document.getElementById('alert-banner');
             banner.className = 'alert-banner yellow';
-            banner.textContent = `Event detected at ${data.first_sensor} — analyzing source...`;
+            banner.textContent = `Event detected at ${data.first_sensor} - analyzing source...`;
             
             pulseMarker(data.first_sensor);
             flashStrip(data.first_sensor);
