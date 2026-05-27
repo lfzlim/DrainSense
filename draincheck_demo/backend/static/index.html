@@ -19,6 +19,28 @@
 
     <div id="alert-banner" class="alert-banner hidden"></div>
 
+    <div id="attribution-panel" class="attribution-panel hidden">
+        <h2>Evidence-Grade Attribution Report</h2>
+        <div class="attr-grid">
+            <div class="attr-item">
+                <span class="attr-label">Likely Source</span>
+                <span class="attr-value" id="attr-name"></span>
+            </div>
+            <div class="attr-item">
+                <span class="attr-label">Location</span>
+                <span class="attr-value" id="attr-address"></span>
+            </div>
+            <div class="attr-item">
+                <span class="attr-label">Confidence</span>
+                <span class="attr-value" id="attr-confidence"></span>
+            </div>
+            <div class="attr-item">
+                <span class="attr-label">Reasoning</span>
+                <span class="attr-value" id="attr-reasoning"></span>
+            </div>
+        </div>
+    </div>
+
     <div class="main-content">
         <div class="map-container">
             <div id="map"></div>
@@ -73,6 +95,7 @@
                     <th>Source Location</th>
                     <th>Signature</th>
                     <th>Confidence</th>
+                    <th>Attribution</th>
                 </tr>
             </thead>
             <tbody>

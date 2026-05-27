@@ -157,7 +157,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                  `Signature: ${data.pollutant_signature.join(', ')}. ` +
                                  `Confidence: ${data.confidence.toUpperCase()}`;
                                  
-            addHistoryRow(timeStr, data.first_sensor, data.source_description, data.pollutant_signature.join(', '), data.confidence);
+            const attrStr = data.attribution ? `${data.attribution.likely_source_name} (${Math.round(data.attribution.confidence * 100)}%)` : 'N/A';
+            addHistoryRow(timeStr, data.first_sensor, data.source_description, data.pollutant_signature.join(', '), data.confidence, attrStr);
+            
+            // Update Attribution Panel
+            if (data.attribution) {
+                const attrPanel = document.getElementById('attribution-panel');
+                attrPanel.classList.remove('hidden');
+                document.getElementById('attr-name').textContent = data.attribution.likely_source_name;
+                document.getElementById('attr-address').textContent = data.attribution.likely_source_address;
+                document.getElementById('attr-confidence').textContent = `${Math.round(data.attribution.confidence * 100)}%`;
+                document.getElementById('attr-reasoning').textContent = data.attribution.reasoning;
+            }
             
             if (sourceMarker) {
                 map.removeLayer(sourceMarker);
@@ -193,11 +204,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function addHistoryRow(time, firstSensor, source, signature, conf) {
+    function addHistoryRow(time, firstSensor, source, signature, conf, attributionStr = 'N/A') {
         const tbody = document.querySelector('#history-table tbody');
         const tr = document.createElement('tr');
         
-        [time, firstSensor, source, signature, conf].forEach(text => {
+        [time, firstSensor, source, signature, conf, attributionStr].forEach(text => {
             const td = document.createElement('td');
             td.textContent = text;
             tr.appendChild(td);
@@ -216,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const banner = document.getElementById('alert-banner');
                 banner.className = 'alert-banner hidden';
                 banner.textContent = '';
+                document.getElementById('attribution-panel').classList.add('hidden');
                 if (sourceMarker) {
                     map.removeLayer(sourceMarker);
                     sourceMarker = null;
@@ -228,7 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(events => {
             events.reverse().forEach(ev => {
                 const timeStr = new Date(ev.started_at * 1000).toLocaleTimeString();
-                addHistoryRow(timeStr, ev.first_sensor, ev.source_description, ev.pollutant_signature.join(', '), ev.confidence);
+                const attrStr = ev.attribution ? `${ev.attribution.likely_source_name} (${Math.round(ev.attribution.confidence * 100)}%)` : 'N/A';
+                addHistoryRow(timeStr, ev.first_sensor, ev.source_description, ev.pollutant_signature.join(', '), ev.confidence, attrStr);
             });
         });
 });

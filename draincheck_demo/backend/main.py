@@ -14,6 +14,7 @@ from sse_starlette.sse import EventSourceResponse
 
 import config
 import correlation
+import attribution
 
 app = FastAPI()
 
@@ -42,7 +43,8 @@ def init_db():
             source_location_cm REAL,
             source_description TEXT,
             pollutant_signature TEXT,      
-            confidence TEXT
+            confidence TEXT,
+            attribution_json TEXT
         )
     ''')
     conn.commit()
@@ -217,6 +219,15 @@ def resolve_event():
     active_event.update(loc_data)
     active_event["resolved_at"] = time.time()
     
+    # ML Attribution
+    attr_data = attribution.run_attribution_model(
+        active_event,
+        active_event.get("source_location_cm", 0.0),
+        active_event["pollutant_signature"],
+        active_event["resolved_at"]
+    )
+    active_event["attribution"] = attr_data
+    
     # Save to db
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -225,8 +236,8 @@ def resolve_event():
             INSERT INTO events (
                 event_id, started_at, resolved_at, first_sensor, triggered_sensors,
                 beam_trigger_times, flow_velocity_cm_s, source_location_cm,
-                source_description, pollutant_signature, confidence
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                source_description, pollutant_signature, confidence, attribution_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             active_event["event_id"],
             active_event["started_at"],
@@ -238,7 +249,8 @@ def resolve_event():
             active_event.get("source_location_cm", 0.0),
             active_event.get("source_description", ""),
             json.dumps(active_event["pollutant_signature"]),
-            active_event.get("confidence", "low")
+            active_event.get("confidence", "low"),
+            json.dumps(active_event["attribution"])
         ))
         conn.commit()
     except Exception as e:
@@ -258,7 +270,8 @@ def resolve_event():
         "source_location_cm": active_event.get("source_location_cm", 0.0),
         "source_description": active_event.get("source_description", ""),
         "pollutant_signature": active_event["pollutant_signature"],
-        "confidence": active_event.get("confidence", "low")
+        "confidence": active_event.get("confidence", "low"),
+        "attribution": active_event["attribution"]
     }
     notify_subscribers(msg)
     
@@ -283,6 +296,10 @@ async def get_events():
             ev["triggered_sensors"] = json.loads(ev["triggered_sensors"])
             ev["beam_trigger_times"] = json.loads(ev["beam_trigger_times"])
             ev["pollutant_signature"] = json.loads(ev["pollutant_signature"])
+            if ev.get("attribution_json"):
+                ev["attribution"] = json.loads(ev["attribution_json"])
+            else:
+                ev["attribution"] = None
         return events
     except Exception as e:
         raise HTTPException(status_code=500, detail="DB Error")
