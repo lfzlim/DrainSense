@@ -8,7 +8,8 @@ import './index.css';
 const SENSORS = {
     'S1': { lat: -33.8688, lon: 151.2093 },
     'S2': { lat: -33.8689, lon: 151.2094 },
-    'S3': { lat: -33.8690, lon: 151.2095 }
+    'S3': { lat: -33.8690, lon: 151.2095 },
+    'S4': { lat: -33.8691, lon: 151.2096 }
 };
 
 const POLYGONS = [
@@ -69,10 +70,12 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
                     html: iconHtml,
                     className: 'custom-pin-icon',
                     iconSize: [32, 32],
-                    iconAnchor: [16, 32]
+                    iconAnchor: [16, 32],
+                    tooltipAnchor: [0, -42]
                 });
                 
                 const marker = L.marker([pos.lat, pos.lon], { icon: pinIcon }).addTo(map);
+                marker.bindTooltip(`<strong>Sensor ${id}</strong>`, { direction: 'top', className: 'custom-tooltip' });
                 markersRef.current[id] = marker;
             }
             

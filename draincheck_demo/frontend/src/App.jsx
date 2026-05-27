@@ -5,11 +5,12 @@ import EventHistory from './EventHistory';
 import './index.css';
 
 function App() {
-    const [sensorData, setSensorData] = useState({ S1: [], S2: [], S3: [] });
+    const [sensorData, setSensorData] = useState({ S1: [], S2: [], S3: [], S4: [] });
     const [sensorStates, setSensorStates] = useState({ 
         S1: { level: 0, ir: 1 }, 
         S2: { level: 0, ir: 1 }, 
-        S3: { level: 0, ir: 1 } 
+        S3: { level: 0, ir: 1 },
+        S4: { level: 0, ir: 1 } 
     });
     const [events, setEvents] = useState([]);
     const [pulsedSensors, setPulsedSensors] = useState([]);
@@ -120,7 +121,7 @@ function App() {
                 <CatchmentMap pulsedSensors={pulsedSensors} sourceLocation={sourceLocation} />
 
                 <div className="charts-container">
-                    {['S1', 'S2', 'S3'].map(sid => (
+                    {['S1', 'S2', 'S3', 'S4'].map(sid => (
                         <SensorChart 
                             key={sid}
                             sensorId={sid}
