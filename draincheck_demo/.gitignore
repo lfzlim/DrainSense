@@ -1,2 +1,3 @@
 backend/venv/
 backend/events.db
+**/__pycache__/
