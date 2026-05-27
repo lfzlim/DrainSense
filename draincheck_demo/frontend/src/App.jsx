@@ -20,13 +20,58 @@ function App() {
 
     const pulseTimeouts = useRef({});
 
-    useEffect(() => {
-        // Fetch past events
-        fetch('/api/events')
+    const [timeFilter, setTimeFilter] = useState(''); // '' means live, otherwise hours
+    
+    // Bulk Export State
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportSelection, setExportSelection] = useState({ S1: true, S2: true, S3: true, S4: true });
+
+    const handleBulkExport = () => {
+        const headers = ["Time", "Sensor ID", "Turbidity (V)", "EC (µS/cm)", "TDS (ppm)"];
+        let csvRows = [headers.join(',')];
+        
+        ['S1', 'S2', 'S3', 'S4'].forEach(sid => {
+            if (exportSelection[sid]) {
+                const data = sensorData[sid];
+                if (data && data.length > 0) {
+                    data.forEach(d => {
+                        csvRows.push([
+                            `"${d.timeLabel}"`,
+                            `"${sid}"`,
+                            d.turbidity,
+                            d.ec,
+                            d.tds
+                        ].join(','));
+                    });
+                }
+            }
+        });
+
+        if (csvRows.length === 1) {
+            alert("No data available for the selected sensors.");
+            return;
+        }
+
+        const csvData = csvRows.join('\n');
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `draincheck_bulk_telemetry_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setShowExportModal(false);
+    };
+
+    const fetchEvents = (filter) => {
+        const url = filter ? `/api/events?hours=${filter}` : '/api/events';
+        fetch(url)
             .then(res => res.json())
             .then(data => {
                 const pastEvents = [...data].reverse().map(ev => ({
-                    time: new Date(ev.started_at * 1000).toLocaleTimeString(),
+                    time: new Date(ev.started_at * 1000).toLocaleString(),
                     firstSensor: ev.first_sensor,
                     source: ev.source_description,
                     signature: ev.pollutant_signature.join(', '),
@@ -34,7 +79,20 @@ function App() {
                 }));
                 setEvents(pastEvents);
             });
+    };
 
+    useEffect(() => {
+        fetchEvents(timeFilter);
+        let interval;
+        if (timeFilter) {
+            interval = setInterval(() => fetchEvents(timeFilter), 10000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [timeFilter]);
+
+    useEffect(() => {
         // Connect SSE
         const evtSource = new EventSource('/api/stream');
         evtSource.onmessage = (event) => {
@@ -75,13 +133,16 @@ function App() {
                     type: 'red',
                     text: `Contamination event detected at ${timeStr}. Source: ${data.source_description}. Signature: ${sigStr}. Confidence: ${data.confidence.toUpperCase()}`
                 });
-                setEvents(prev => [{
-                    time: timeStr,
-                    firstSensor: data.first_sensor,
-                    source: data.source_description,
-                    signature: sigStr,
-                    conf: data.confidence
-                }, ...prev].slice(0, 10));
+                setEvents(prev => {
+                    const newArr = [{
+                        time: new Date(data.beam_trigger_times[data.first_sensor] * 1000).toLocaleString(),
+                        firstSensor: data.first_sensor,
+                        source: data.source_description,
+                        signature: sigStr,
+                        conf: data.confidence
+                    }, ...prev];
+                    return timeFilter ? newArr : newArr.slice(0, 10);
+                });
                 
                 setSourceLocation({ sensorId: data.first_sensor });
             }
@@ -110,8 +171,50 @@ function App() {
         <>
             <div className="header">
                 <h1>DrainCheck - Live Catchment Monitor</h1>
-                <button id="reset-btn" onClick={handleReset}>Reset Baseline</button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                        style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: '#03dac6', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}
+                        onClick={() => setShowExportModal(true)}
+                    >
+                        Export Telemetry
+                    </button>
+                    <button id="reset-btn" onClick={handleReset}>Reset Baseline</button>
+                </div>
             </div>
+
+            {showExportModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div style={{ backgroundColor: '#1e1e1e', padding: '24px', borderRadius: '8px', border: '1px solid #333', width: '300px' }}>
+                        <h3 style={{ margin: '0 0 16px 0', color: '#fff' }}>Export Telemetry</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                            {['S1', 'S2', 'S3', 'S4'].map(sid => (
+                                <label key={sid} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ccc', cursor: 'pointer' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={exportSelection[sid]}
+                                        onChange={(e) => setExportSelection(prev => ({ ...prev, [sid]: e.target.checked }))}
+                                    />
+                                    Sensor {sid.replace('S', '')}
+                                </label>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button 
+                                onClick={() => setShowExportModal(false)}
+                                style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #555', backgroundColor: 'transparent', color: '#ccc', cursor: 'pointer' }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleBulkExport}
+                                style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: '#bb86fc', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                                Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div id="alert-banner" className={`alert-banner ${alert ? alert.type : 'hidden'}`}>
                 {alert?.text}
@@ -134,7 +237,11 @@ function App() {
                 </div>
             </div>
 
-            <EventHistory events={events} />
+            <EventHistory 
+                events={events} 
+                timeFilter={timeFilter} 
+                setTimeFilter={setTimeFilter} 
+            />
         </>
     );
 }

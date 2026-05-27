@@ -95,11 +95,43 @@ export default function SensorChart({ sensorId, data, level, irState, isPulsing 
         }
     }, [data]);
 
+    const handleDownloadCSV = () => {
+        if (!data || data.length === 0) return;
+        const headers = ["Time", "Turbidity (V)", "EC (µS/cm)", "TDS (ppm)"];
+        const csvRows = [
+            headers.join(','),
+            ...data.map(d => [
+                `"${d.timeLabel}"`,
+                d.turbidity,
+                d.ec,
+                d.tds
+            ].join(','))
+        ];
+        const csvData = csvRows.join('\n');
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `draincheck_sensor_${sensorId}_data.csv`);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
     return (
         <div className="chart-card" id={`card-${sensorId.toLowerCase()}`} style={{ border: '1px solid #333', background: 'rgba(30,30,30,0.6)', backdropFilter: 'blur(10px)' }}>
-            <div className="chart-header" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                <h2>Sensor {sensorId.replace('S', '')} Data Stream</h2>
-                <span className="water-level" style={{ color: '#03dac6' }}>Level: {level ? `${Math.round(level)} mm` : '-- mm'}</span>
+            <div className="chart-header" style={{ background: 'rgba(0,0,0,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ margin: 0 }}>Sensor {sensorId.replace('S', '')} Data Stream</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <button 
+                        onClick={handleDownloadCSV} 
+                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#333', color: 'white', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                        Export CSV
+                    </button>
+                    <span className="water-level" style={{ color: '#03dac6' }}>Level: {level ? `${Math.round(level)} mm` : '-- mm'}</span>
+                </div>
             </div>
             <div className="chart-body">
                 <canvas ref={canvasRef}></canvas>

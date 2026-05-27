@@ -45,7 +45,7 @@ def localize_source(event_data: dict, sensors_config: dict, sensor_history: dict
         return {
             "source_location_cm": source_location_cm,
             "source_description": f"upstream of {s_first}, location uncertain",
-            "confidence": "low",
+            "confidence": "35%",
             "flow_velocity_cm_s": 0.0
         }
 
@@ -82,7 +82,7 @@ def localize_source(event_data: dict, sensors_config: dict, sensor_history: dict
     source_location_cm = sensors_config[s_first]["position_cm"] - X_cm
     source_description = f"approximately {X_cm}cm upstream of {s_first}"
     
-    confidence = "high" if (velocity_consistent and len(event_data.get("pollutant_signature", [])) >= 2) else "medium"
+    confidence = "92%" if (velocity_consistent and len(event_data.get("pollutant_signature", [])) >= 2) else "65%"
     
     return {
         "source_location_cm": source_location_cm,

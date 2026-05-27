@@ -269,11 +269,15 @@ async def reset_baseline():
     return {"ok": True}
 
 @app.get("/api/events")
-async def get_events():
+async def get_events(hours: Optional[int] = None):
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("SELECT * FROM events ORDER BY started_at DESC LIMIT 10")
+        if hours is not None:
+            threshold = time.time() - (hours * 3600)
+            c.execute("SELECT * FROM events WHERE started_at >= ? ORDER BY started_at DESC", (threshold,))
+        else:
+            c.execute("SELECT * FROM events ORDER BY started_at DESC LIMIT 10")
         rows = c.fetchall()
         cols = [description[0] for description in c.description]
         events = [dict(zip(cols, row)) for row in rows]
