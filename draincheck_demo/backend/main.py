@@ -8,7 +8,6 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
@@ -308,9 +307,6 @@ async def stream(request: Request):
             event_subscribers.remove(q)
             
     return EventSourceResponse(event_generator())
-
-# Serve static files last
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
