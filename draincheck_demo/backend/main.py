@@ -9,7 +9,7 @@ import requests
 import time
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
@@ -146,8 +146,8 @@ async def receive_reading(payload: ReadingPayload):
                 await receive_beam_event(evt)
                 
     if payload.turbidity_voltage is None:
-        payload.turbidity_voltage = round(max(0.0, 3.8 - (payload.tds_ppm / 200.0)), 2)
-        payload.turbidity_raw = 3800
+        payload.turbidity_voltage = round(max(0.0, 3.8 - (payload.tds_ppm / 200.0) + random.uniform(-0.15, 0.15)), 2)
+        payload.turbidity_raw = int(payload.turbidity_voltage * 1000)
         
     if payload.ec_us_cm is None:
         payload.ec_us_cm = 0.0
@@ -258,13 +258,11 @@ def check_analog_signatures(event: dict):
         base = baselines[s]
         
         if min_turb < base["turbidity_voltage"] - config.EVENT_THRESHOLD_TURBIDITY_DROP_V:
-            event["pollutant_signature"].add("high_turbidity")
-        if max_ec > base["ec_us_cm"] + config.EVENT_THRESHOLD_EC_RISE_US:
-            event["pollutant_signature"].add("elevated_conductivity")
+            event["pollutant_signature"].add("High Turbidity")
         if max_tds > base["tds_ppm"] + config.EVENT_THRESHOLD_TDS_RISE_PPM:
-            event["pollutant_signature"].add("elevated_tds")
+            event["pollutant_signature"].add("Elevated TDS")
         if max_level > base["water_level_mm"] + config.EVENT_THRESHOLD_LEVEL_RISE_MM:
-            event["pollutant_signature"].add("flow_anomaly")
+            event["pollutant_signature"].add("High Water Level (Possible Rainfall)")
 
 def resolve_event():
     global active_event
@@ -364,6 +362,7 @@ simulation_active = False
 has_auto_started = False
 chain_reaction_active = False
 chain_reaction_tick = 0
+uts_dump_active = False
 s4_peak_tds = 300.0
 s4_peak_ec = 500.0
 
@@ -381,7 +380,7 @@ async def simulation_loop():
     global simulation_active, chain_reaction_active, chain_reaction_tick
     
     while True:
-        if not simulation_active:
+        if not simulation_active and not uts_dump_active:
             await asyncio.sleep(0.5)
             continue
             
@@ -408,6 +407,11 @@ async def simulation_loop():
             reading = {k: generate_noise(v) for k, v in BASELINES_SIM.items()}
             reading["ir_beam_state"] = 1
             
+            if uts_dump_active and s == "S1":
+                reading["ir_beam_state"] = 0
+                reading["tds_ppm"] = generate_noise(350.0, 0.05)
+                reading["ec_us_cm"] = generate_noise(550.0, 0.05)
+                
             if chain_reaction_active:
                 if s == "S3" and chain_reaction_tick >= 8:
                     reading["ir_beam_state"] = 0
@@ -421,6 +425,9 @@ async def simulation_loop():
                     reading["ir_beam_state"] = 0
                     reading["tds_ppm"] = generate_noise(s4_peak_tds * 0.55, 0.05)
                     reading["ec_us_cm"] = generate_noise(s4_peak_ec * 0.55, 0.05)
+                
+            # Tie simulated turbidity tightly to the simulated TDS with a small random jitter
+            reading["turbidity_voltage"] = round(max(0.0, 3.8 - (reading["tds_ppm"] / 200.0) + random.uniform(-0.10, 0.10)), 2)
                 
             payload = ReadingPayload(
                 type="reading", sensor_id=s, timestamp_ms=int(time.time()*1000),
@@ -533,3 +540,22 @@ if __name__ == "__main__":
     import uvicorn
     # According to security rules, MUST use localhost for testing
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+async def trigger_uts_dump_task():
+    global uts_dump_active
+    print("Initiating UTS dump in 2 seconds...")
+    await asyncio.sleep(2)
+    print("UTS dump triggered!")
+    uts_dump_active = True
+    evt = BeamEventPayload(type="beam_event", sensor_id="S1", timestamp_ms=int(time.time()*1000), new_state=0, uptime_ms=10000)
+    await receive_beam_event(evt)
+    await asyncio.sleep(10)
+    uts_dump_active = False
+    evt_end = BeamEventPayload(type="beam_event", sensor_id="S1", timestamp_ms=int(time.time()*1000), new_state=1, uptime_ms=10000)
+    await receive_beam_event(evt_end)
+    print("UTS dump ended.")
+
+@app.post("/api/test_uts_dump")
+async def test_uts_dump(background_tasks: BackgroundTasks):
+    background_tasks.add_task(trigger_uts_dump_task)
+    return {"ok": True}

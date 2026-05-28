@@ -21,7 +21,7 @@ export default function EventHistory({ events, timeFilter, setTimeFilter }) {
         const a = document.createElement('a');
         a.setAttribute('hidden', '');
         a.setAttribute('href', url);
-        a.setAttribute('download', `draincheck_events_${new Date().toISOString().slice(0,10)}.csv`);
+        a.setAttribute('download', `drainsense_events_${new Date().toISOString().slice(0,10)}.csv`);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

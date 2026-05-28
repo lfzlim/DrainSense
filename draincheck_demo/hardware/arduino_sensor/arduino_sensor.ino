@@ -1,68 +1,100 @@
+/**
+ DFRobot Gravity: Analog TDS Sensor/Meter + HC-SR04 Ultrasonic Sensor
+ 
+ TDS sensor reads water TDS (ppm).
+ Ultrasonic sensor (HC-SR04) measures distance in cm.
+   - Trig: A5
+   - Echo: A4
+ **/
+
 #include <EEPROM.h>
 #include "GravityTDS.h"
 
 #define TdsSensorPin A1
-#define TRIG_PIN 5           // Ultrasonic Trigger Pin
-#define ECHO_PIN 6           // Ultrasonic Echo Pin
+#define TrigPin      A5
+#define EchoPin      A4
 
 GravityTDS gravityTds;
-float temperature = 25.0; // Assume 25C if no temp sensor
-float tdsValue = 0;
+
+float temperature = 25, tdsValue = 0;
+float distanceCm = 0;
 float waterLevelMm = 0;
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
 
-    // 1. Initialize TDS Sensor
+    // TDS sensor setup
     gravityTds.setPin(TdsSensorPin);
-    gravityTds.setAref(5.0);  // Arduino Uno uses 5V reference
-    gravityTds.setAdcRange(1024); // Arduino Uno has 10-bit ADC
-    gravityTds.begin();
+    gravityTds.setAref(5.0);        // reference voltage on ADC, default 5.0V on Arduino UNO
+    gravityTds.setAdcRange(1024);   // 1024 for 10bit ADC; 4096 for 12bit ADC
+    gravityTds.begin();             // initialization
 
-    // 2. Initialize Ultrasonic Sensor
-    pinMode(TRIG_PIN, OUTPUT);
-    pinMode(ECHO_PIN, INPUT);
+    // Ultrasonic sensor setup
+    // A4 and A5 are used as digital pins here
+    pinMode(TrigPin, OUTPUT);
+    pinMode(EchoPin, INPUT);
+    digitalWrite(TrigPin, LOW);
 }
 
-void loop() {
-    // ==========================================
-    // 1. READ SENSORS
-    // ==========================================
-    
-    // Read TDS
-    gravityTds.setTemperature(temperature); 
-    gravityTds.update();
-    tdsValue = gravityTds.getTdsValue();
-
-    // Read Ultrasonic Water Level
-    digitalWrite(TRIG_PIN, LOW);
+float readDistanceCm()
+{
+    // Send a 10us HIGH pulse to trigger the measurement
+    digitalWrite(TrigPin, LOW);
     delayMicroseconds(2);
-    digitalWrite(TRIG_PIN, HIGH);
+    digitalWrite(TrigPin, HIGH);
     delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-    long duration = pulseIn(ECHO_PIN, HIGH, 30000); // 30ms timeout
+    digitalWrite(TrigPin, LOW);
+
+    // Read echo pulse duration (timeout 30 ms ≈ 5 m range)
+    unsigned long duration = pulseIn(EchoPin, HIGH, 30000UL);
+
     if (duration == 0) {
-        waterLevelMm = 0; // Timeout
-    } else {
-        // Speed of sound is 343 m/s. Convert time to distance in mm.
-        waterLevelMm = (duration * 0.343) / 2.0; 
+        return 0.0;  // no echo received (out of range / not connected)
     }
 
-    // ==========================================
-    // 2. SEND TO LAPTOP VIA SERIAL (JSON)
-    // ==========================================
-    // We format it as a JSON string so the Python script can read it.
+    // Speed of sound ~343 m/s -> 0.0343 cm/us, divide by 2 for round trip
+    return (duration * 0.0343f) / 2.0f;
+}
+
+void loop()
+{
+    // --- TDS reading ---
+    //temperature = readTemperature();  // add your temperature sensor and read it
+    gravityTds.setTemperature(temperature);  // set temperature for compensation
+    gravityTds.update();                     // sample and calculate
+    tdsValue = gravityTds.getTdsValue();     // get the TDS value
+
+    // --- Ultrasonic reading ---
+    distanceCm = readDistanceCm();
     
+    // Assume the pipe/container is 190mm (19cm) tall. 
+    // Water height = Total Height - Distance from top sensor to water
+    float pipeHeightMm = 190.0;
+    waterLevelMm = pipeHeightMm - (distanceCm * 10.0); 
+    if (waterLevelMm < 0) waterLevelMm = 0;
+
+    // --- JSON Output for Python Backend ---
     Serial.print("{\"type\":\"reading\",");
     Serial.print("\"sensor_id\":\"S4\",");
     Serial.print("\"timestamp_ms\":0,");
-    Serial.print("\"water_level_mm\":"); Serial.print(waterLevelMm); Serial.print(",");
+    
+    Serial.print("\"water_level_mm\":"); 
+    Serial.print(waterLevelMm); 
+    Serial.print(",");
+    
     Serial.print("\"tds_raw\":0,");
-    Serial.print("\"tds_ppm\":"); Serial.print(tdsValue); Serial.print(",");
-    Serial.print("\"ir_beam_state\":1,"); // Assuming intact
-    Serial.print("\"uptime_ms\":"); Serial.print(millis());
+    
+    Serial.print("\"tds_ppm\":"); 
+    Serial.print(tdsValue); 
+    Serial.print(",");
+    
+    Serial.print("\"ir_beam_state\":1,"); // Assuming intact for now
+    
+    Serial.print("\"uptime_ms\":"); 
+    Serial.print(millis());
+    
     Serial.println("}");
 
-    // Send data every 500ms for real-time dashboard updates!
-    delay(500); 
+    delay(500); // 500ms delay so the dashboard updates 2x a second!
 }

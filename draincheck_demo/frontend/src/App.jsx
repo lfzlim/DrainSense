@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import CatchmentMap from './CatchmentMap';
 import SensorChart from './SensorChart';
 import EventHistory from './EventHistory';
-import { CloudRain, Sun, Activity } from 'lucide-react';
+import { CloudRain, Sun } from 'lucide-react';
 import './index.css';
 
 function App() {
@@ -76,7 +76,7 @@ function App() {
         const a = document.createElement('a');
         a.setAttribute('hidden', '');
         a.setAttribute('href', url);
-        a.setAttribute('download', `draincheck_bulk_telemetry_${new Date().toISOString().slice(0,10)}.csv`);
+        a.setAttribute('download', `drainsense_bulk_telemetry_${new Date().toISOString().slice(0,10)}.csv`);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -232,20 +232,19 @@ function App() {
         }
     };
 
-    const handleTestSpike = () => {
-        fetch('/api/test_spike', {
+    const handleUtsDump = () => {
+        fetch('/api/test_uts_dump', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tds_ppm: parseFloat(testTdsValue) })
-        });
+        }).catch(err => console.error("UTS dump trigger failed:", err));
     };
 
     return (
         <>
             <div className="header">
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-                    <Activity style={{ marginRight: '12px' }} color="#3b82f6" />
-                    DrainCheck Dashboard
+                    <img src="/logo.png" alt="DrainSense Logo" style={{ height: '40px', marginRight: '12px' }} />
+                    DrainSense Dashboard
                     
                     {!weather.loading && (
                         <div style={{ marginLeft: '24px', padding: '4px 12px', background: '#1e293b', borderRadius: '16px', fontSize: '0.9rem', fontWeight: 'normal', color: '#cbd5e1', display: 'flex', alignItems: 'center' }}>
@@ -259,12 +258,6 @@ function App() {
                     )}
                 </h1>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                        style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: isSimulating ? '#ef4444' : '#10b981', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
-                        onClick={toggleSimulation}
-                    >
-                        {isSimulating ? "Stop Simulation" : "Start Simulation"}
-                    </button>
                     <button 
                         style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#333', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
                         onClick={() => setShowExportModal(true)}
@@ -284,21 +277,12 @@ function App() {
                     >
                         Clear Data
                     </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginLeft: '10px', borderLeft: '1px solid #555', paddingLeft: '10px' }}>
-                        <input 
-                            type="number" 
-                            value={testTdsValue} 
-                            onChange={e => setTestTdsValue(e.target.value)} 
-                            style={{ width: '70px', padding: '6px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#222', color: 'white' }}
-                            title="Test TDS ppm"
-                        />
-                        <button 
-                            style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: '#8b5cf6', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
-                            onClick={handleTestSpike}
-                        >
-                            Inject S4 Spike
-                        </button>
-                    </div>
+                    <button 
+                        style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: '#d97706', color: 'white', cursor: 'pointer', fontWeight: 'bold', marginLeft: '20px' }}
+                        onClick={handleUtsDump}
+                    >
+                        Demo UTS Dumping (5s delay)
+                    </button>
                 </div>
             </div>
 
@@ -336,8 +320,16 @@ function App() {
                 </div>
             )}
 
-            <div id="alert-banner" className={`alert-banner ${alert ? alert.type : 'hidden'}`}>
-                {alert?.text}
+            <div id="alert-banner" className={`alert-banner ${alert ? alert.type : 'hidden'}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{alert?.text}</span>
+                {alert && (
+                    <button 
+                        onClick={() => setAlert(null)} 
+                        style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer', marginLeft: '20px', fontWeight: 'bold', padding: '0 8px' }}
+                    >
+                        ×
+                    </button>
+                )}
             </div>
 
             <div className="main-content">

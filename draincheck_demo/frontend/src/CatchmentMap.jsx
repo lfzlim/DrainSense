@@ -13,9 +13,8 @@ const SENSORS = {
 };
 
 const FACTORIES = [
-    { name: 'USYD Chemicals', lat: -33.9178, lon: 151.2242, color: '#ef4444' },
-    { name: 'UNSW Manufacturing', lat: -33.9182, lon: 151.2250, color: '#eab308' },
-    { name: 'UTS Industries', lat: -33.9185, lon: 151.2238, color: '#3b82f6' }
+    { name: 'UNSW Industries', lat: -33.9175, lon: 151.2251, color: '#eab308' },
+    { name: 'UTS Industries', lat: -33.9128, lon: 151.2285, color: '#3b82f6' }
 ];
 const POLYGONS = [
     {

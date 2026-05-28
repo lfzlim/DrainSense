@@ -102,7 +102,7 @@ export default function SensorChart({ sensorId, data, level, irState, isPulsing 
         const a = document.createElement('a');
         a.setAttribute('hidden', '');
         a.setAttribute('href', url);
-        a.setAttribute('download', `draincheck_sensor_${sensorId}_data.csv`);
+        a.setAttribute('download', `drainsense_sensor_${sensorId}_data.csv`);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
