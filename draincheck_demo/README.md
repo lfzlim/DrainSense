@@ -14,6 +14,8 @@ To run the full stack, you need to open **three separate terminal tabs** on your
 This runs the Python FastApi server that ingests sensor data and runs the correlation/weather mathematics.
 ```bash
 cd backend
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
@@ -30,6 +32,7 @@ npm run dev
 This tiny Python script listens to the Arduino over the USB cable and forwards the sensor data to the backend API.
 ```bash
 cd backend
+source venv/bin/activate
 pip install pyserial requests
 # NOTE: Open serial_bridge.py and edit line 8 to match your Arduino's COM port! (e.g., 'COM3' or '/dev/ttyACM0')
 python serial_bridge.py
