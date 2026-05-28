@@ -5,7 +5,7 @@
 ## Tech Stack
 - **Frontend:** React, Vite, Leaflet, Tailwind CSS, Recharts
 - **Backend:** FastAPI, Python, SQLite, Open-Meteo API
-- **Hardware:** ESP32/Arduino, Ultrasonic Distance Sensors, DFrobot Analog TDS Sensors
+- **Hardware:** ESP32/Arduino, Ultrasonic Sensors, TDS Sensors
 
 ### Manual Startup
 
