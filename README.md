@@ -9,12 +9,6 @@ Built for live pitch demo.
 - **Backend:** FastAPI, Python, SQLite, Open-Meteo API
 - **Hardware:** ESP32/Arduino, Ultrasonic Distance Sensors, DFrobot Analog TDS Sensors
 
-## Quick Start
-
-You can instantly launch all services using the provided run scripts:
-- **Windows:** Double-click `run.bat`
-- **macOS/Linux:** Run `./run.sh`
-
 ### Manual Startup
 
 If you prefer to start services manually:
