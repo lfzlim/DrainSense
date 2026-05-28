@@ -1,6 +1,6 @@
 # DrainSense
 
-**Live Catchment Monitor.** Real-time distributed IoT sensor network with AI correlation for detecting illegal pollutant dumping and dry-weather flow anomalies.
+**Live Catchment Monitor.** Real-time distributed IoT sensor network for detecting illegal pollutant dumping and dry-weather flow anomalies.
 
 ## Tech Stack
 - **Frontend:** React, Vite, Leaflet, Tailwind CSS, Recharts
