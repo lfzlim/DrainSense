@@ -6,37 +6,27 @@ import 'leaflet/dist/leaflet.css';
 import './index.css';
 
 const SENSORS = {
-    'S1': { lat: -33.8688, lon: 151.2093 },
-    'S2': { lat: -33.8689, lon: 151.2094 },
-    'S3': { lat: -33.8690, lon: 151.2095 },
-    'S4': { lat: -33.8691, lon: 151.2096 }
+    'S1': { lat: -33.9130, lon: 151.2280 },
+    'S2': { lat: -33.9145, lon: 151.2270 },
+    'S3': { lat: -33.9160, lon: 151.2260 },
+    'S4': { lat: -33.9173, lon: 151.2253 }
 };
 
 const FACTORIES = [
-    { name: 'Apex Chemicals', lat: -33.86914, lon: 151.20960, color: '#ef4444' },
-    { name: 'BioSynthetics Inc', lat: -33.86922, lon: 151.20972, color: '#eab308' },
-    { name: 'RiverSide Manufacturing', lat: -33.86932, lon: 151.20964, color: '#3b82f6' }
+    { name: 'USYD Chemicals', lat: -33.9178, lon: 151.2242, color: '#ef4444' },
+    { name: 'UNSW Manufacturing', lat: -33.9182, lon: 151.2250, color: '#eab308' },
+    { name: 'UTS Industries', lat: -33.9185, lon: 151.2238, color: '#3b82f6' }
 ];
 const POLYGONS = [
     {
-        name: 'RESIDENTIAL SUB-Catchment',
+        name: 'UNSW Kensington Campus',
         color: '#f97316', // orange
-        coords: [[-33.8687, 151.2095], [-33.8687, 151.2105], [-33.8693, 151.2105], [-33.8693, 151.2095]]
+        coords: [[-33.915, 151.223], [-33.915, 151.230], [-33.920, 151.230], [-33.920, 151.223]]
     },
     {
-        name: 'INDUSTRIAL SUB-Catchment 1',
-        color: '#84cc16', // green
-        coords: [[-33.8688, 151.2088], [-33.8688, 151.2096], [-33.8693, 151.2096], [-33.8693, 151.2088]]
-    },
-    {
-        name: 'INDUSTRIAL SUB-Catchment 1a',
+        name: 'Randwick Industrial Hub',
         color: '#3b82f6', // blue
-        coords: [[-33.8689, 151.2089], [-33.8689, 151.2095], [-33.8691, 151.2095], [-33.8691, 151.2089]]
-    },
-    {
-        name: 'INDUSTRIAL SUB-catchment 2',
-        color: '#a855f7', // purple
-        coords: [[-33.8685, 151.2090], [-33.8685, 151.2095], [-33.8688, 151.2095], [-33.8688, 151.2090]]
+        coords: [[-33.910, 151.225], [-33.910, 151.230], [-33.915, 151.230], [-33.915, 151.225]]
     }
 ];
 
@@ -48,7 +38,7 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
 
     useEffect(() => {
         if (!mapRef.current) {
-            const map = L.map('map', { zoomControl: false }).setView([-33.8689, 151.2094], 16);
+            const map = L.map('map', { zoomControl: false }).setView([-33.9160, 151.2260], 16);
             
             // Satellite Imagery
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -104,7 +94,11 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
             
             mapRef.current = map;
 
-            // Load drainage pipes
+            // Draw custom sensor pipe line
+            const sensorCoords = Object.values(SENSORS).map(s => [s.lat, s.lon]);
+            L.polyline(sensorCoords, { color: '#0ea5e9', weight: 4, dashArray: '10, 10' }).addTo(map);
+
+            // Fetch live pipes from ArcGIS (if available in this area)
             const loadPipes = async () => {
                 const bounds = map.getBounds();
                 const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
@@ -202,7 +196,7 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
         <div className="map-container" style={{ position: 'relative', minHeight: '60vh', flex: '0 0 60vh' }}>
             <div id="map" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}></div>
             
-            {/* Custom Map Legend overlay matching the user image */}
+            {/* Custom Map Legend overlay */}
             <div className="map-legend" style={{
                 position: 'absolute',
                 top: '10px',
@@ -219,23 +213,11 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f97316', marginRight: '8px' }}></div>
-                    <span style={{ color: '#000' }}>RESIDENTIAL SUB-Catchment</span>
+                    <span style={{ color: '#000' }}>UNSW Kensington Campus</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#84cc16', marginRight: '8px' }}></div>
-                    <span style={{ color: '#000' }}>INDUSTRIAL SUB-Catchment 1</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ marginRight: '8px', display: 'flex' }}><X size={16} strokeWidth={4} color="#3b82f6" /></div>
-                    <span style={{ color: '#000' }}>INDUSTRIAL SUB-Catchment 1a</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ marginRight: '8px', display: 'flex' }}><X size={16} strokeWidth={4} color="#a855f7" /></div>
-                    <span style={{ color: '#000' }}>INDUSTRIAL SUB-catchment 2</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', marginRight: '8px' }}></div>
-                    <span style={{ color: '#000' }}>WHOLE CATCHMENT</span>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#3b82f6', marginRight: '8px' }}></div>
+                    <span style={{ color: '#000' }}>Randwick Industrial Hub</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ marginRight: '8px', display: 'flex' }}><Factory size={16} strokeWidth={2} color="#000" /></div>

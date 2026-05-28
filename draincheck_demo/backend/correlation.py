@@ -3,10 +3,10 @@ import statistics
 def map_sharpness_to_distance(sharpness_tds_per_s: float):
     # Simulating the milk dilution demo
     if sharpness_tds_per_s > 80.0:
-        return 10, "Apex Chemicals"
+        return 10, "USYD Chemicals"
     if sharpness_tds_per_s > 40.0:
-        return 25, "BioSynthetics Inc"
-    return 50, "RiverSide Manufacturing"
+        return 25, "UNSW Manufacturing"
+    return 50, "UTS Industries"
 
 def compute_rise_sharpness(sensor_id: str, trigger_time: float, history: list) -> float:
     """

@@ -28,7 +28,8 @@ function App() {
     const [exportSelection, setExportSelection] = useState({ S1: true, S2: true, S3: true, S4: true });
 
     // Simulation State
-    const [isSimulating, setIsSimulating] = useState(false);
+    const [isSimulating, setIsSimulating] = useState(true);
+    const [testTdsValue, setTestTdsValue] = useState(800);
     const [weather, setWeather] = useState({ rain: 0, loading: true });
 
     const toggleSimulation = () => {
@@ -231,6 +232,14 @@ function App() {
         }
     };
 
+    const handleTestSpike = () => {
+        fetch('/api/test_spike', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tds_ppm: parseFloat(testTdsValue) })
+        });
+    };
+
     return (
         <>
             <div className="header">
@@ -275,6 +284,21 @@ function App() {
                     >
                         Clear Data
                     </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginLeft: '10px', borderLeft: '1px solid #555', paddingLeft: '10px' }}>
+                        <input 
+                            type="number" 
+                            value={testTdsValue} 
+                            onChange={e => setTestTdsValue(e.target.value)} 
+                            style={{ width: '70px', padding: '6px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#222', color: 'white' }}
+                            title="Test TDS ppm"
+                        />
+                        <button 
+                            style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: '#8b5cf6', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+                            onClick={handleTestSpike}
+                        >
+                            Inject S4 Spike
+                        </button>
+                    </div>
                 </div>
             </div>
 

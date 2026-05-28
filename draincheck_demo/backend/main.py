@@ -121,7 +121,7 @@ def check_weather_and_alert(sensor_id: str, level: float, spike: float):
 
 @app.post("/api/readings")
 async def receive_reading(payload: ReadingPayload):
-    global simulation_active, has_auto_started, chain_reaction_active, chain_reaction_tick
+    global simulation_active, has_auto_started, chain_reaction_active, chain_reaction_tick, s4_peak_tds, s4_peak_ec
     received_at = time.time()
     sensor_id = payload.sensor_id
     if sensor_id not in config.SENSORS:
@@ -140,6 +140,8 @@ async def receive_reading(payload: ReadingPayload):
             if not chain_reaction_active:
                 chain_reaction_active = True
                 chain_reaction_tick = 0
+                s4_peak_tds = payload.tds_ppm
+                s4_peak_ec = payload.ec_us_cm if payload.ec_us_cm else (payload.tds_ppm * 2)
                 evt = BeamEventPayload(type="beam_event", sensor_id="S4", timestamp_ms=int(time.time()*1000), new_state=0, uptime_ms=10000)
                 await receive_beam_event(evt)
                 
@@ -362,6 +364,8 @@ simulation_active = False
 has_auto_started = False
 chain_reaction_active = False
 chain_reaction_tick = 0
+s4_peak_tds = 300.0
+s4_peak_ec = 500.0
 
 BASELINES_SIM = {
     "water_level_mm": 50.0,
@@ -407,16 +411,16 @@ async def simulation_loop():
             if chain_reaction_active:
                 if s == "S3" and chain_reaction_tick >= 8:
                     reading["ir_beam_state"] = 0
-                    reading["tds_ppm"] = generate_noise(300.0, 0.05)
-                    reading["ec_us_cm"] = generate_noise(500.0, 0.05)
+                    reading["tds_ppm"] = generate_noise(s4_peak_tds * 0.85, 0.05)
+                    reading["ec_us_cm"] = generate_noise(s4_peak_ec * 0.85, 0.05)
                 if s == "S2" and chain_reaction_tick >= 16:
                     reading["ir_beam_state"] = 0
-                    reading["tds_ppm"] = generate_noise(250.0, 0.05)
-                    reading["ec_us_cm"] = generate_noise(450.0, 0.05)
+                    reading["tds_ppm"] = generate_noise(s4_peak_tds * 0.70, 0.05)
+                    reading["ec_us_cm"] = generate_noise(s4_peak_ec * 0.70, 0.05)
                 if s == "S1" and chain_reaction_tick >= 24:
                     reading["ir_beam_state"] = 0
-                    reading["tds_ppm"] = generate_noise(200.0, 0.05)
-                    reading["ec_us_cm"] = generate_noise(400.0, 0.05)
+                    reading["tds_ppm"] = generate_noise(s4_peak_tds * 0.55, 0.05)
+                    reading["ec_us_cm"] = generate_noise(s4_peak_ec * 0.55, 0.05)
                 
             payload = ReadingPayload(
                 type="reading", sensor_id=s, timestamp_ms=int(time.time()*1000),
@@ -447,6 +451,39 @@ async def toggle_simulate(payload: SimulateToggleRequest):
     simulation_active = payload.active
     notify_subscribers({"type": "simulation_state", "active": simulation_active})
     return {"ok": True, "simulation_active": simulation_active}
+
+class TestSpikeRequest(BaseModel):
+    tds_ppm: float
+
+@app.post("/api/test_spike")
+async def trigger_test_spike(payload: TestSpikeRequest):
+    global chain_reaction_active, chain_reaction_tick, s4_peak_tds, s4_peak_ec, simulation_active, has_auto_started
+    
+    simulation_active = True
+    has_auto_started = True
+    
+    chain_reaction_active = True
+    chain_reaction_tick = 0
+    s4_peak_tds = payload.tds_ppm
+    s4_peak_ec = payload.tds_ppm * 2.0
+    
+    evt = BeamEventPayload(type="beam_event", sensor_id="S4", timestamp_ms=int(time.time()*1000), new_state=0, uptime_ms=10000)
+    await receive_beam_event(evt)
+    
+    reading = ReadingPayload(
+        type="reading",
+        sensor_id="S4",
+        timestamp_ms=int(time.time()*1000),
+        water_level_mm=50.0,
+        tds_raw=int(payload.tds_ppm),
+        tds_ppm=payload.tds_ppm,
+        turbidity_voltage=max(0.0, 3.8 - (payload.tds_ppm / 200.0)),
+        ec_us_cm=payload.tds_ppm * 2.0,
+        ir_beam_state=0,
+        uptime_ms=10000
+    )
+    await receive_reading(reading)
+    return {"ok": True}
 
 @app.get("/api/events")
 async def get_events(hours: Optional[int] = None):

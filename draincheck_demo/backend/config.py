@@ -1,9 +1,9 @@
 # configuration for DrainCheck Demo
 SENSORS = {
-    "S1": {"position_cm": 20, "lat": -33.8688, "lon": 151.2093},
-    "S2": {"position_cm": 50, "lat": -33.8689, "lon": 151.2094},
-    "S3": {"position_cm": 80, "lat": -33.8690, "lon": 151.2095},
-    "S4": {"position_cm": 110, "lat": -33.8691, "lon": 151.2096},
+    "S1": {"position_cm": 20, "lat": -33.9130, "lon": 151.2280},
+    "S2": {"position_cm": 50, "lat": -33.9145, "lon": 151.2270},
+    "S3": {"position_cm": 80, "lat": -33.9160, "lon": 151.2260},
+    "S4": {"position_cm": 110, "lat": -33.9173, "lon": 151.2253},
 }
 
 BASELINE_WINDOW_SECONDS = 30
