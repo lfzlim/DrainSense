@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { renderToString } from 'react-dom/server';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, X, Factory } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './index.css';
@@ -12,6 +12,11 @@ const SENSORS = {
     'S4': { lat: -33.8691, lon: 151.2096 }
 };
 
+const FACTORIES = [
+    { name: 'Apex Chemicals', lat: -33.86914, lon: 151.20960, color: '#ef4444' },
+    { name: 'BioSynthetics Inc', lat: -33.86922, lon: 151.20972, color: '#eab308' },
+    { name: 'RiverSide Manufacturing', lat: -33.86932, lon: 151.20964, color: '#3b82f6' }
+];
 const POLYGONS = [
     {
         name: 'RESIDENTIAL SUB-Catchment',
@@ -61,6 +66,21 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
                     weight: 2
                 }).addTo(map);
                 polyLayer.bindTooltip(poly.name, { sticky: true, className: 'custom-tooltip' });
+            });
+
+            // Add Factories
+            FACTORIES.forEach(factory => {
+                const iconHtml = renderToString(<Factory fill="#ffffff" color={factory.color} size={28} />);
+                const factoryIcon = L.divIcon({
+                    html: iconHtml,
+                    className: 'custom-factory-icon',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                    tooltipAnchor: [0, -14]
+                });
+                
+                const marker = L.marker([factory.lat, factory.lon], { icon: factoryIcon }).addTo(map);
+                marker.bindTooltip(`<strong>${factory.name}</strong>`, { direction: 'top', className: 'custom-tooltip' });
             });
 
             // Add Sensors
@@ -216,6 +236,10 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', marginRight: '8px' }}></div>
                     <span style={{ color: '#000' }}>WHOLE CATCHMENT</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ marginRight: '8px', display: 'flex' }}><Factory size={16} strokeWidth={2} color="#000" /></div>
+                    <span style={{ color: '#000' }}>FACTORIES</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <div style={{ width: '12px', height: '2px', background: '#06b6d4', marginRight: '8px' }}></div>

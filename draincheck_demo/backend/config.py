@@ -11,5 +11,5 @@ EVENT_THRESHOLD_TURBIDITY_DROP_V = 0.4   # turbidity voltage drop below baseline
 EVENT_THRESHOLD_EC_RISE_US = 50          # µS/cm rise above baseline
 EVENT_THRESHOLD_TDS_RISE_PPM = 30        # ppm rise above baseline
 EVENT_THRESHOLD_LEVEL_RISE_MM = 5        # used for optional clog detection
-CORRELATION_WINDOW_SECONDS = 10
+CORRELATION_WINDOW_SECONDS = 20
 RECOVERY_PERIOD_SECONDS = 30             # baseline frozen after event resolves

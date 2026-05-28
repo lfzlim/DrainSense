@@ -24,19 +24,10 @@ export default function SensorChart({ sensorId, data, level, irState, isPulsing 
                             pointRadius: 1
                         },
                         {
-                            label: 'EC (µS/cm)',
-                            borderColor: '#03dac6',
-                            data: [],
-                            yAxisID: 'yEC',
-                            tension: 0.3,
-                            borderWidth: 2,
-                            pointRadius: 1
-                        },
-                        {
                             label: 'TDS (ppm)',
                             borderColor: '#f2c94c',
                             data: [],
-                            yAxisID: 'yEC',
+                            yAxisID: 'yTDS',
                             tension: 0.3,
                             borderWidth: 2,
                             pointRadius: 1
@@ -70,13 +61,13 @@ export default function SensorChart({ sensorId, data, level, irState, isPulsing 
                             ticks: { color: '#bb86fc' },
                             title: { display: true, text: 'Turbidity (V)', color: '#bb86fc' }
                         },
-                        yEC: {
+                        yTDS: {
                             type: 'linear',
                             display: true,
                             position: 'right',
                             grid: { drawOnChartArea: false },
-                            ticks: { color: '#03dac6' },
-                            title: { display: true, text: 'Conductivity', color: '#03dac6' }
+                            ticks: { color: '#f2c94c' },
+                            title: { display: true, text: 'TDS (ppm)', color: '#f2c94c' }
                         }
                     }
                 }
@@ -89,21 +80,19 @@ export default function SensorChart({ sensorId, data, level, irState, isPulsing 
             const chart = chartRef.current;
             chart.data.labels = data.map(d => d.timeLabel);
             chart.data.datasets[0].data = data.map(d => d.turbidity);
-            chart.data.datasets[1].data = data.map(d => d.ec);
-            chart.data.datasets[2].data = data.map(d => d.tds);
+            chart.data.datasets[1].data = data.map(d => d.tds);
             chart.update();
         }
     }, [data]);
 
     const handleDownloadCSV = () => {
         if (!data || data.length === 0) return;
-        const headers = ["Time", "Turbidity (V)", "EC (µS/cm)", "TDS (ppm)"];
+        const headers = ["Time", "Turbidity (V)", "TDS (ppm)"];
         const csvRows = [
             headers.join(','),
             ...data.map(d => [
                 `"${d.timeLabel}"`,
                 d.turbidity,
-                d.ec,
                 d.tds
             ].join(','))
         ];

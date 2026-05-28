@@ -4,6 +4,9 @@ import time
 import uuid
 import sqlite3
 import asyncio
+import random
+import requests
+import time
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, Request, HTTPException
@@ -54,10 +57,10 @@ class ReadingPayload(BaseModel):
     sensor_id: str = Field(..., min_length=2, max_length=10)
     timestamp_ms: int = Field(..., ge=0)
     water_level_mm: float = Field(..., ge=0)
-    turbidity_raw: int = Field(..., ge=0, le=4095)
-    turbidity_voltage: float = Field(..., ge=0.0, le=5.0)
-    ec_raw: int = Field(..., ge=0, le=4095)
-    ec_us_cm: float = Field(..., ge=0.0)
+    turbidity_raw: Optional[int] = Field(None, ge=0, le=4095)
+    turbidity_voltage: Optional[float] = Field(None, ge=0.0, le=5.0)
+    ec_raw: Optional[int] = Field(None, ge=0, le=4095)
+    ec_us_cm: Optional[float] = Field(None, ge=0.0)
     tds_raw: int = Field(..., ge=0, le=4095)
     tds_ppm: float = Field(..., ge=0.0)
     ir_beam_state: int = Field(..., ge=0, le=1)
@@ -90,12 +93,71 @@ def compute_baselines():
             baselines[s]["tds_ppm"] = sum(r["tds_ppm"] for r in hist) / len(hist)
             baselines[s]["water_level_mm"] = sum(r["water_level_mm"] for r in hist) / len(hist)
 
+last_flood_alert_times = {}
+
+def check_weather_and_alert(sensor_id: str, level: float, spike: float):
+    try:
+        lat = config.SENSORS[sensor_id]["lat"]
+        lon = config.SENSORS[sensor_id]["lon"]
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=precipitation"
+        resp = requests.get(url, timeout=3).json()
+        rain = resp.get("current", {}).get("precipitation", 0.0)
+        
+        if rain > 0.0:
+            alert_type = "weather_flood"
+        else:
+            alert_type = "dry_flood"
+            
+        notify_subscribers({
+            "type": "flood_alert",
+            "alert_subtype": alert_type,
+            "sensor_id": sensor_id,
+            "level": level,
+            "spike": spike,
+            "rain": rain
+        })
+    except Exception as e:
+        print(f"Weather API error: {e}")
+
 @app.post("/api/readings")
 async def receive_reading(payload: ReadingPayload):
+    global simulation_active, has_auto_started, chain_reaction_active, chain_reaction_tick
     received_at = time.time()
     sensor_id = payload.sensor_id
     if sensor_id not in config.SENSORS:
         raise HTTPException(status_code=400, detail="Unknown sensor ID")
+        
+    # Auto-start simulation if S4 sends data (only trigger once so manual stop works)
+    if sensor_id == "S4":
+        if not simulation_active and not has_auto_started:
+            simulation_active = True
+            has_auto_started = True
+            notify_subscribers({"type": "simulation_state", "active": True})
+            
+        # Detect TDS spike on S4 to start chain reaction
+        base_tds = baselines["S4"]["tds_ppm"]
+        if base_tds > 0 and payload.tds_ppm > base_tds + config.EVENT_THRESHOLD_TDS_RISE_PPM:
+            if not chain_reaction_active:
+                chain_reaction_active = True
+                chain_reaction_tick = 0
+                evt = BeamEventPayload(type="beam_event", sensor_id="S4", timestamp_ms=int(time.time()*1000), new_state=0, uptime_ms=10000)
+                await receive_beam_event(evt)
+                
+    if payload.turbidity_voltage is None:
+        payload.turbidity_voltage = round(max(0.0, 3.8 - (payload.tds_ppm / 200.0)), 2)
+        payload.turbidity_raw = 3800
+        
+    if payload.ec_us_cm is None:
+        payload.ec_us_cm = 0.0
+        payload.ec_raw = 0
+        
+    # Flood Detection
+    base_level = baselines[sensor_id]["water_level_mm"]
+    if base_level > 0 and payload.water_level_mm > base_level + 20:
+        current_time = time.time()
+        if current_time - last_flood_alert_times.get(sensor_id, 0) > 10:
+            last_flood_alert_times[sensor_id] = current_time
+            asyncio.create_task(asyncio.to_thread(check_weather_and_alert, sensor_id, payload.water_level_mm, round(payload.water_level_mm - base_level, 1)))
     
     reading_dict = payload.model_dump()
     reading_dict["t"] = received_at
@@ -267,6 +329,124 @@ def resolve_event():
 async def reset_baseline():
     compute_baselines()
     return {"ok": True}
+
+@app.post("/api/clear")
+async def clear_data():
+    global sensor_history, active_event, has_auto_started, chain_reaction_active, chain_reaction_tick
+    
+    # Clear memory state
+    for s in config.SENSORS:
+        sensor_history[s].clear()
+    active_event = None
+    has_auto_started = False
+    chain_reaction_active = False
+    chain_reaction_tick = 0
+    
+    # Clear database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("DELETE FROM events")
+        conn.commit()
+    except Exception as e:
+        print(f"DB Clear Error: {e}")
+    finally:
+        if 'conn' in locals():
+            conn.close()
+            
+    notify_subscribers({"type": "clear_data"})
+    return {"ok": True}
+
+# --- SIMULATION ENGINE ---
+simulation_active = False
+has_auto_started = False
+chain_reaction_active = False
+chain_reaction_tick = 0
+
+BASELINES_SIM = {
+    "water_level_mm": 50.0,
+    "turbidity_voltage": 3.8,
+    "ec_us_cm": 200.0,
+    "tds_ppm": 100.0
+}
+
+def generate_noise(val, variance=0.05):
+    return val * (1.0 + random.uniform(-variance, variance))
+
+async def simulation_loop():
+    global simulation_active, chain_reaction_active, chain_reaction_tick
+    
+    while True:
+        if not simulation_active:
+            await asyncio.sleep(0.5)
+            continue
+            
+        if chain_reaction_active:
+            chain_reaction_tick += 1
+            
+            # Fire beam events exactly on the target ticks
+            if chain_reaction_tick == 8:
+                await receive_beam_event(BeamEventPayload(type="beam_event", sensor_id="S3", timestamp_ms=int(time.time()*1000), new_state=0, uptime_ms=10000))
+            if chain_reaction_tick == 16:
+                await receive_beam_event(BeamEventPayload(type="beam_event", sensor_id="S2", timestamp_ms=int(time.time()*1000), new_state=0, uptime_ms=10000))
+            if chain_reaction_tick == 24:
+                await receive_beam_event(BeamEventPayload(type="beam_event", sensor_id="S1", timestamp_ms=int(time.time()*1000), new_state=0, uptime_ms=10000))
+            
+            if chain_reaction_tick >= 40:
+                chain_reaction_active = False
+                await receive_beam_event(BeamEventPayload(type="beam_event", sensor_id="S4", timestamp_ms=int(time.time()*1000), new_state=1, uptime_ms=10000))
+                await receive_beam_event(BeamEventPayload(type="beam_event", sensor_id="S3", timestamp_ms=int(time.time()*1000), new_state=1, uptime_ms=10000))
+                await receive_beam_event(BeamEventPayload(type="beam_event", sensor_id="S2", timestamp_ms=int(time.time()*1000), new_state=1, uptime_ms=10000))
+                await receive_beam_event(BeamEventPayload(type="beam_event", sensor_id="S1", timestamp_ms=int(time.time()*1000), new_state=1, uptime_ms=10000))
+                
+        # Send readings ONLY for S1, S2, S3 (S4 is real hardware)
+        for s in ["S1", "S2", "S3"]:
+            reading = {k: generate_noise(v) for k, v in BASELINES_SIM.items()}
+            reading["ir_beam_state"] = 1
+            
+            if chain_reaction_active:
+                if s == "S3" and chain_reaction_tick >= 8:
+                    reading["ir_beam_state"] = 0
+                    reading["tds_ppm"] = generate_noise(300.0, 0.05)
+                    reading["ec_us_cm"] = generate_noise(500.0, 0.05)
+                if s == "S2" and chain_reaction_tick >= 16:
+                    reading["ir_beam_state"] = 0
+                    reading["tds_ppm"] = generate_noise(250.0, 0.05)
+                    reading["ec_us_cm"] = generate_noise(450.0, 0.05)
+                if s == "S1" and chain_reaction_tick >= 24:
+                    reading["ir_beam_state"] = 0
+                    reading["tds_ppm"] = generate_noise(200.0, 0.05)
+                    reading["ec_us_cm"] = generate_noise(400.0, 0.05)
+                
+            payload = ReadingPayload(
+                type="reading", sensor_id=s, timestamp_ms=int(time.time()*1000),
+                water_level_mm=reading["water_level_mm"],
+                turbidity_raw=int(reading["turbidity_voltage"]*1000),
+                turbidity_voltage=reading["turbidity_voltage"],
+                ec_raw=int(reading["ec_us_cm"]),
+                ec_us_cm=reading["ec_us_cm"],
+                tds_raw=int(reading["tds_ppm"]),
+                tds_ppm=reading["tds_ppm"],
+                ir_beam_state=reading["ir_beam_state"],
+                uptime_ms=10000
+            )
+            await receive_reading(payload)
+            
+        await asyncio.sleep(0.5)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(simulation_loop())
+
+class SimulateToggleRequest(BaseModel):
+    active: bool
+
+@app.post("/api/simulate")
+async def toggle_simulate(payload: SimulateToggleRequest):
+    global simulation_active
+    simulation_active = payload.active
+    notify_subscribers({"type": "simulation_state", "active": simulation_active})
+    return {"ok": True, "simulation_active": simulation_active}
 
 @app.get("/api/events")
 async def get_events(hours: Optional[int] = None):

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import CatchmentMap from './CatchmentMap';
 import SensorChart from './SensorChart';
 import EventHistory from './EventHistory';
+import { CloudRain, Sun, Activity } from 'lucide-react';
 import './index.css';
 
 function App() {
@@ -25,6 +26,22 @@ function App() {
     // Bulk Export State
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportSelection, setExportSelection] = useState({ S1: true, S2: true, S3: true, S4: true });
+
+    // Simulation State
+    const [isSimulating, setIsSimulating] = useState(false);
+    const [weather, setWeather] = useState({ rain: 0, loading: true });
+
+    const toggleSimulation = () => {
+        fetch('/api/simulate', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ active: !isSimulating }) 
+        })
+        .then(res => res.json())
+        .then(data => {
+            setIsSimulating(data.simulation_active);
+        });
+    };
 
     const handleBulkExport = () => {
         const headers = ["Time", "Sensor ID", "Turbidity (V)", "EC (µS/cm)", "TDS (ppm)"];
@@ -146,9 +163,50 @@ function App() {
                 
                 setSourceLocation({ sensorId: data.first_sensor });
             }
+            else if (data.type === 'simulation_state') {
+                setIsSimulating(data.active);
+            }
+            else if (data.type === 'clear_data') {
+                setSensorData({ S1: [], S2: [], S3: [], S4: [] });
+                setEvents([]);
+                setAlert(null);
+                setSourceLocation(null);
+                setPulsedSensors([]);
+            }
+            else if (data.type === 'flood_alert') {
+                if (data.alert_subtype === 'dry_flood') {
+                    setAlert({
+                        type: 'red',
+                        text: `CRITICAL DRY-WEATHER ANOMALY: Volume spike of ${data.spike}mm at Sensor ${data.sensor_id.replace('S','')}. Rainfall is ${data.rain}mm. High probability of illegal dumping!`
+                    });
+                } else {
+                    setAlert({
+                        type: 'yellow',
+                        text: `Weather-Correlated Flood: Volume spike of ${data.spike}mm at Sensor ${data.sensor_id.replace('S','')}. Local rainfall is ${data.rain}mm.`
+                    });
+                }
+                triggerPulse(data.sensor_id);
+            }
         };
 
         return () => evtSource.close();
+    }, []);
+
+    useEffect(() => {
+        const fetchWeather = async () => {
+            try {
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-33.8688&longitude=151.2093&current=precipitation');
+                const data = await res.json();
+                if (data && data.current) {
+                    setWeather({ rain: data.current.precipitation, loading: false });
+                }
+            } catch(e) {
+                console.error("Failed to fetch weather", e);
+            }
+        };
+        fetchWeather();
+        const interval = setInterval(fetchWeather, 300000);
+        return () => clearInterval(interval);
     }, []);
 
     const triggerPulse = (sid) => {
@@ -167,11 +225,37 @@ function App() {
             });
     };
 
+    const handleClearData = () => {
+        if (window.confirm("Are you sure you want to clear all data and events?")) {
+            fetch('/api/clear', { method: 'POST' });
+        }
+    };
+
     return (
         <>
             <div className="header">
-                <h1>DrainCheck - Live Catchment Monitor</h1>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                    <Activity style={{ marginRight: '12px' }} color="#3b82f6" />
+                    DrainCheck Dashboard
+                    
+                    {!weather.loading && (
+                        <div style={{ marginLeft: '24px', padding: '4px 12px', background: '#1e293b', borderRadius: '16px', fontSize: '0.9rem', fontWeight: 'normal', color: '#cbd5e1', display: 'flex', alignItems: 'center' }}>
+                            {weather.rain > 0 ? (
+                                <><CloudRain size={16} style={{ marginRight: '6px' }} color="#60a5fa" /> {weather.rain}mm rain</>
+                            ) : (
+                                <><Sun size={16} style={{ marginRight: '6px' }} color="#fbbf24" /> Dry</>
+                            )}
+                            <span style={{ marginLeft: '6px', color: '#64748b' }}>(Sydney)</span>
+                        </div>
+                    )}
+                </h1>
                 <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                        style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: isSimulating ? '#ef4444' : '#10b981', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+                        onClick={toggleSimulation}
+                    >
+                        {isSimulating ? "Stop Simulation" : "Start Simulation"}
+                    </button>
                     <button 
                         style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#333', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
                         onClick={() => setShowExportModal(true)}
@@ -184,6 +268,12 @@ function App() {
                         onClick={handleReset}
                     >
                         Reset Baseline
+                    </button>
+                    <button 
+                        style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#333', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+                        onClick={handleClearData}
+                    >
+                        Clear Data
                     </button>
                 </div>
             </div>

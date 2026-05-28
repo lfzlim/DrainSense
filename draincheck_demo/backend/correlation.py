@@ -1,18 +1,18 @@
 import statistics
 
-def map_sharpness_to_distance(sharpness_v_per_s: float) -> int:
-    # Calibrated empirically during build phase by performing 20+ test pours
-    # at known distances upstream of S1 and fitting this table.
-    if sharpness_v_per_s > 1.5: return 5
-    if sharpness_v_per_s > 1.0: return 10
-    if sharpness_v_per_s > 0.5: return 15
-    return 20
+def map_sharpness_to_distance(sharpness_tds_per_s: float):
+    # Simulating the milk dilution demo
+    if sharpness_tds_per_s > 80.0:
+        return 10, "Apex Chemicals"
+    if sharpness_tds_per_s > 40.0:
+        return 25, "BioSynthetics Inc"
+    return 50, "RiverSide Manufacturing"
 
 def compute_rise_sharpness(sensor_id: str, trigger_time: float, history: list) -> float:
     """
     Computes rise sharpness for the first-triggered sensor.
     history is a list of readings dicts.
-    Look at the turbidity_voltage readings in the 2 seconds before the IR beam trip and the 2 seconds after.
+    Look at the tds_ppm readings in the 2 seconds before the IR beam trip and the 2 seconds after.
     """
     before_window = [r for r in history if trigger_time - 2 <= r["t"] <= trigger_time]
     after_window = [r for r in history if trigger_time <= r["t"] <= trigger_time + 2]
@@ -20,18 +20,16 @@ def compute_rise_sharpness(sensor_id: str, trigger_time: float, history: list) -
     if not before_window or not after_window:
         return 0.0
         
-    mean_voltage_before = statistics.mean([r["turbidity_voltage"] for r in before_window])
+    mean_tds_before = statistics.mean([r["tds_ppm"] for r in before_window])
     
-    # We are looking for the maximum drop in voltage (since lower voltage = higher turbidity)
-    min_voltage_after = min([r["turbidity_voltage"] for r in after_window])
-    # Find the time it took to reach min_voltage_after relative to trigger
-    time_of_min = next(r["t"] for r in after_window if r["turbidity_voltage"] == min_voltage_after)
-    time_to_min = time_of_min - trigger_time
-    if time_to_min <= 0:
-        time_to_min = 0.1 # avoid division by zero
+    max_tds_after = max([r["tds_ppm"] for r in after_window])
+    time_of_max = next(r["t"] for r in after_window if r["tds_ppm"] == max_tds_after)
+    time_to_max = time_of_max - trigger_time
+    if time_to_max <= 0:
+        time_to_max = 0.1 # avoid division by zero
         
-    delta_v_per_second = abs(min_voltage_after - mean_voltage_before) / time_to_min
-    return delta_v_per_second
+    delta_tds_per_second = max(0, max_tds_after - mean_tds_before) / time_to_max
+    return delta_tds_per_second
 
 def localize_source(event_data: dict, sensors_config: dict, sensor_history: dict) -> dict:
     triggered_sensors = list(event_data["beam_trigger_times"].keys())
@@ -76,11 +74,11 @@ def localize_source(event_data: dict, sensors_config: dict, sensor_history: dict
     # Compute sharpness
     history = sensor_history.get(s_first, [])
     rise_sharpness = compute_rise_sharpness(s_first, t_first, history)
-    X_cm = map_sharpness_to_distance(rise_sharpness)
+    X_cm, factory_name = map_sharpness_to_distance(rise_sharpness)
     X_cm = max(2, min(X_cm, sensors_config[s_first]["position_cm"]))
     
     source_location_cm = sensors_config[s_first]["position_cm"] - X_cm
-    source_description = f"approximately {X_cm}cm upstream of {s_first}"
+    source_description = f"{factory_name} (approximately {X_cm}cm upstream of {s_first})"
     
     confidence = "92%" if (velocity_consistent and len(event_data.get("pollutant_signature", [])) >= 2) else "65%"
     
