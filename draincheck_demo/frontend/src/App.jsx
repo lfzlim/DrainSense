@@ -173,12 +173,18 @@ function App() {
                 <h1>DrainCheck - Live Catchment Monitor</h1>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button 
-                        style={{ padding: '8px 16px', borderRadius: '4px', border: 'none', backgroundColor: '#03dac6', color: '#000', cursor: 'pointer', fontWeight: 'bold' }}
+                        style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#333', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
                         onClick={() => setShowExportModal(true)}
                     >
                         Export Telemetry
                     </button>
-                    <button id="reset-btn" onClick={handleReset}>Reset Baseline</button>
+                    <button 
+                        id="reset-btn" 
+                        style={{ padding: '8px 16px', borderRadius: '4px', border: '1px solid #555', backgroundColor: '#333', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+                        onClick={handleReset}
+                    >
+                        Reset Baseline
+                    </button>
                 </div>
             </div>
 

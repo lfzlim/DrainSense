@@ -202,4 +202,15 @@ th {
         box-shadow: 0 0 0 0 rgba(207, 102, 121, 0);
     }
 }
-.custom-tooltip { background: rgba(0,0,0,0.8); color: white; border: 1px solid #333; border-radius: 4px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+.custom-tooltip { 
+    background: white; 
+    color: black; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+    font-weight: bold; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+}
+.custom-tooltip::before,
+.custom-tooltip::after { 
+    display: none !important; 
+}

@@ -148,10 +148,10 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
         for (const [sid, marker] of Object.entries(markersRef.current)) {
             if (pulsedSensors.includes(sid)) {
                 const yellowIcon = renderToString(<MapPin fill="#facc15" color="#ca8a04" size={32} />);
-                marker.setIcon(L.divIcon({ html: yellowIcon, className: 'custom-pin-icon', iconSize: [32,32], iconAnchor: [16,32] }));
+                marker.setIcon(L.divIcon({ html: yellowIcon, className: 'custom-pin-icon', iconSize: [32,32], iconAnchor: [16,32], tooltipAnchor: [0, -42] }));
             } else {
                 const redIcon = renderToString(<MapPin fill="#ef4444" color="#7f1d1d" size={32} />);
-                marker.setIcon(L.divIcon({ html: redIcon, className: 'custom-pin-icon', iconSize: [32,32], iconAnchor: [16,32] }));
+                marker.setIcon(L.divIcon({ html: redIcon, className: 'custom-pin-icon', iconSize: [32,32], iconAnchor: [16,32], tooltipAnchor: [0, -42] }));
             }
         }
     }, [pulsedSensors]);
@@ -168,7 +168,7 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
                     const slat = fs.lat + 0.00005;
                     const slon = fs.lon - 0.00005;
                     const redIcon = L.divIcon({
-                        className: 'pulse-icon',
+                        className: '',
                         html: '<div style="background:red;width:100%;height:100%;border-radius:50%"></div>',
                         iconSize: [24, 24]
                     });
@@ -188,9 +188,9 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
                 top: '10px',
                 left: '10px',
                 zIndex: 1000,
-                background: 'rgba(255, 255, 255, 0.9)',
+                background: 'white',
                 padding: '10px',
-                borderRadius: '8px',
+                borderRadius: '0',
                 color: '#000',
                 fontFamily: 'sans-serif',
                 fontWeight: 'bold',
@@ -199,27 +199,27 @@ export default function CatchmentMap({ pulsedSensors, sourceLocation }) {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f97316', marginRight: '8px' }}></div>
-                    <span style={{ color: '#f97316' }}>RESIDENTIAL SUB-Catchment</span>
+                    <span style={{ color: '#000' }}>RESIDENTIAL SUB-Catchment</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#84cc16', marginRight: '8px' }}></div>
-                    <span style={{ color: '#84cc16' }}>INDUSTRIAL SUB-Catchment 1</span>
+                    <span style={{ color: '#000' }}>INDUSTRIAL SUB-Catchment 1</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ marginRight: '8px', display: 'flex' }}><X size={16} strokeWidth={4} color="#3b82f6" /></div>
-                    <span style={{ color: '#3b82f6' }}>INDUSTRIAL SUB-Catchment 1a</span>
+                    <span style={{ color: '#000' }}>INDUSTRIAL SUB-Catchment 1a</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ marginRight: '8px', display: 'flex' }}><X size={16} strokeWidth={4} color="#a855f7" /></div>
-                    <span style={{ color: '#a855f7' }}>INDUSTRIAL SUB-catchment 2</span>
+                    <span style={{ color: '#000' }}>INDUSTRIAL SUB-catchment 2</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', marginRight: '8px' }}></div>
-                    <span style={{ color: '#ef4444' }}>WHOLE CATCHMENT</span>
+                    <span style={{ color: '#000' }}>WHOLE CATCHMENT</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <div style={{ width: '12px', height: '2px', background: '#06b6d4', marginRight: '8px' }}></div>
-                    <span style={{ color: '#06b6d4' }}>DRAINAGE PIPES</span>
+                    <span style={{ color: '#000' }}>DRAINAGE PIPES</span>
                 </div>
             </div>
         </div>
