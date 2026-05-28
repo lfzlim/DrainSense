@@ -2,8 +2,6 @@
 
 **Live Catchment Monitor.** Real-time distributed IoT sensor network with AI correlation for detecting illegal pollutant dumping and dry-weather flow anomalies.
 
-Built for live pitch demo.
-
 ## Tech Stack
 - **Frontend:** React, Vite, Leaflet, Tailwind CSS, Recharts
 - **Backend:** FastAPI, Python, SQLite, Open-Meteo API
